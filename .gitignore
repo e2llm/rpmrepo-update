@@ -1,0 +1,22 @@
+# Binary (at root level only)
+/rpmrepo-update
+
+# Go build cache
+.gocache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+*.test
+coverage.out
+coverage.html
