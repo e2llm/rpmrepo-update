@@ -2,6 +2,21 @@
 
 A fast, incremental RPM repository metadata updater written in Go. Add or remove packages from YUM/DNF repositories without downloading the entire repo.
 
+## Why?
+
+Traditional `createrepo` requires downloading the entire repository metadata to add a single package. For large repositories on S3/MinIO, this means:
+- Slow CI pipelines (minutes instead of seconds)
+- High bandwidth costs
+- Race conditions with parallel builds
+
+**rpmrepo-update** solves this with incremental updates and atomic S3 operations.
+
+**10-second use case:**
+```bash
+# Add new RPM to S3-hosted repo — no full sync needed
+rpmrepo-update --backend s3 --repo-root s3://my-bucket/repo add ./my-package-1.0.0.rpm
+```
+
 ## Features
 
 - **Incremental updates** - Add or remove RPMs without syncing entire repositories
@@ -10,6 +25,17 @@ A fast, incremental RPM repository metadata updater written in Go. Add or remove
 - **GPG signing** - Sign repository metadata and RPM packages
 - **Checksum support** - SHA-256 and SHA-512 checksums
 - **Dry-run mode** - Preview changes before applying them
+
+## Comparison with createrepo
+
+| Feature | createrepo_c | rpmrepo-update |
+|---------|--------------|----------------|
+| Downloads entire repo | Yes | No |
+| Incremental updates | No | Yes |
+| Native S3 support | No | Yes |
+| Atomic operations (ETag) | No | Yes |
+| Parallel CI safe | No | Yes |
+| Time for 1 package | O(repo size) | O(1) |
 
 ## Installation
 
@@ -51,6 +77,30 @@ rpmrepo-update --backend fs --repo-root /path/to/repo remove package.rpm --delet
 rpmrepo-update --backend fs --repo-root /path/to/repo check
 ```
 
+## Atomicity & Safety Model
+
+### What is atomic:
+- Single package add/remove — metadata update is atomic via S3 ETag
+- repomd.xml is written last, after all other files
+
+### Conflict detection:
+- Uses S3 ETag (If-Match) for optimistic locking
+- Parallel updates to same repo will fail-fast with conflict error
+- Safe to retry — no partial state
+
+### What is NOT atomic:
+- Adding multiple packages in one command — each is separate operation
+- Cross-repo operations
+
+### Recommended CI pattern:
+```bash
+rpmrepo-update --backend s3 --repo-root s3://bucket/repo add pkg.rpm || {
+  echo "Conflict detected, retrying..."
+  sleep $((RANDOM % 5))
+  rpmrepo-update --backend s3 --repo-root s3://bucket/repo add pkg.rpm
+}
+```
+
 ## S3 Backend
 
 Works with AWS S3 and S3-compatible storage (MinIO, etc.):
@@ -77,6 +127,30 @@ rpmrepo-update \
   --s3-endpoint https://minio.example.com \
   --repo-root s3://bucket/prefix \
   add package.rpm
+```
+
+## Using in CI/CD
+
+### GitLab CI
+```yaml
+publish-rpm:
+  stage: publish
+  script:
+    - rpmrepo-update --backend s3 --repo-root s3://${S3_BUCKET}/rpm-repo add ./dist/*.rpm
+  variables:
+    AWS_ACCESS_KEY_ID: $S3_ACCESS_KEY
+    AWS_SECRET_ACCESS_KEY: $S3_SECRET_KEY
+```
+
+### GitHub Actions
+```yaml
+- name: Publish RPM
+  env:
+    AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+    AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+  run: |
+    go install github.com/e2llm/rpmrepo-update/cmd/rpmrepo-update@latest
+    rpmrepo-update --backend s3 --repo-root s3://${{ secrets.S3_BUCKET }}/repo add ./dist/*.rpm
 ```
 
 ## GPG Signing
@@ -149,6 +223,19 @@ rpmrepo-update check [--output json]
 - Go 1.21 or later
 - For GPG signing: `gpg` command available in PATH
 - For RPM re-signing: `rpmsign` command available in PATH
+
+## Roadmap
+
+### v0.2 (planned)
+- [ ] Parallel package uploads
+- [ ] `--retry` flag with exponential backoff
+- [ ] Repository metadata diff/changelog
+- [ ] Prometheus metrics endpoint
+
+### Future
+- [ ] Repository mirroring
+- [ ] Signature verification on read
+- [ ] Delta RPM support
 
 ## License
 
