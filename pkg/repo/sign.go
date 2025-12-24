@@ -3,6 +3,7 @@ package repo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -19,7 +20,8 @@ func (r *Repo) signRepomd(ctx context.Context, repomd []byte, gpgKey string) err
 	out, err := cmd.Output()
 	if err != nil {
 		// capture stderr if available
-		if ee, ok := err.(*exec.ExitError); ok {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
 			return fmt.Errorf("gpg sign failed: %s", strings.TrimSpace(string(ee.Stderr)))
 		}
 		return fmt.Errorf("gpg sign failed: %w", err)
