@@ -357,11 +357,7 @@ func parseOtherInto(index map[string]*Package, data []byte) error {
 			continue
 		}
 		for _, c := range p.Changelogs {
-			pkg.Changelogs = append(pkg.Changelogs, Changelog{
-				Author: c.Author,
-				Date:   c.Date,
-				Text:   c.Text,
-			})
+			pkg.Changelogs = append(pkg.Changelogs, Changelog(c))
 		}
 	}
 	return nil
@@ -500,11 +496,7 @@ func marshalOther(pkgs []Package) ([]byte, error) {
 			},
 		}
 		for _, c := range p.Changelogs {
-			pkg.Changelogs = append(pkg.Changelogs, changelogEntry{
-				Author: c.Author,
-				Date:   c.Date,
-				Text:   c.Text,
-			})
+			pkg.Changelogs = append(pkg.Changelogs, changelogEntry(c))
 		}
 		out.Packages = append(out.Packages, pkg)
 	}

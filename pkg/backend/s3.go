@@ -77,9 +77,7 @@ func keyJoin(prefix, p string) string {
 	if p == "." {
 		return strings.TrimSuffix(prefix, "/")
 	}
-	if strings.HasPrefix(p, "/") {
-		p = strings.TrimPrefix(p, "/")
-	}
+	p = strings.TrimPrefix(p, "/")
 	if prefix == "" {
 		return p
 	}
