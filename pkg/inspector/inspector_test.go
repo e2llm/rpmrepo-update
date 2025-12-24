@@ -37,23 +37,23 @@ func TestDepFlagsToString(t *testing.T) {
 	}
 }
 
-func TestMin(t *testing.T) {
+func TestMinLen(t *testing.T) {
 	tests := []struct {
-		vals []int
-		want int
+		a, b, c int
+		want    int
 	}{
-		{nil, 0},
-		{[]int{}, 0},
-		{[]int{5}, 5},
-		{[]int{3, 1, 4, 1, 5}, 1},
-		{[]int{-1, -5, 0}, -5},
-		{[]int{100, 200, 50}, 50},
+		{1, 2, 3, 1},
+		{3, 2, 1, 1},
+		{2, 1, 3, 1},
+		{5, 5, 5, 5},
+		{0, 10, 20, 0},
+		{100, 50, 75, 50},
 	}
 
 	for _, tt := range tests {
-		got := min(tt.vals...)
+		got := minLen(tt.a, tt.b, tt.c)
 		if got != tt.want {
-			t.Errorf("min(%v) = %d, want %d", tt.vals, got, tt.want)
+			t.Errorf("minLen(%d, %d, %d) = %d, want %d", tt.a, tt.b, tt.c, got, tt.want)
 		}
 	}
 }

@@ -105,7 +105,7 @@ func changelogsFromRPM(pkg *rpm.Package) []metadata.Changelog {
 	times := pkg.Header.GetTag(1080).Int64Slice()
 	names := pkg.Header.GetTag(1081).StringSlice()
 	texts := pkg.Header.GetTag(1082).StringSlice()
-	n := min(len(times), len(names), len(texts))
+	n := minLen(len(times), len(names), len(texts))
 	entries := make([]metadata.Changelog, 0, n)
 	for i := 0; i < n; i++ {
 		entries = append(entries, metadata.Changelog{
@@ -135,15 +135,14 @@ func depFlagsToString(flags int) (string, bool) {
 	}
 }
 
-func min(vals ...int) int {
-	if len(vals) == 0 {
-		return 0
+// minLen returns the minimum of three integers.
+// Using a dedicated function instead of builtin min() for clarity with slice lengths.
+func minLen(a, b, c int) int {
+	if a <= b && a <= c {
+		return a
 	}
-	m := vals[0]
-	for _, v := range vals[1:] {
-		if v < m {
-			m = v
-		}
+	if b <= c {
+		return b
 	}
-	return m
+	return c
 }
