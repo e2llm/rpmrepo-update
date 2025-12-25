@@ -43,27 +43,36 @@ rpmrepo-update --backend s3 --repo-root s3://my-bucket/repo add ./my-package-1.0
 
 ## Installation
 
+### Pre-built Binaries (Recommended)
+
+Download the latest release:
+
+```bash
+# Linux (amd64)
+curl -L https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-linux-amd64 -o rpmrepo-update
+chmod +x rpmrepo-update
+sudo mv rpmrepo-update /usr/local/bin/
+
+# Linux (arm64)
+curl -L https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-linux-arm64 -o rpmrepo-update
+chmod +x rpmrepo-update
+sudo mv rpmrepo-update /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -L https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-darwin-arm64 -o rpmrepo-update
+chmod +x rpmrepo-update
+sudo mv rpmrepo-update /usr/local/bin/
+```
+
+Or download a specific version from [Releases](https://github.com/e2llm/rpmrepo-update/releases).
+
 ### From Source
+
+Requires Go 1.21+:
 
 ```bash
 go install github.com/e2llm/rpmrepo-update/cmd/rpmrepo-update@latest
 ```
-
-### Build Locally
-
-```bash
-git clone https://github.com/e2llm/rpmrepo-update.git
-cd rpmrepo-update
-go build ./cmd/rpmrepo-update
-```
-
-### Pre-built Binaries
-
-Download from [Releases](https://github.com/e2llm/rpmrepo-update/releases):
-- `rpmrepo-update-linux-amd64`
-- `rpmrepo-update-linux-arm64`
-- `rpmrepo-update-darwin-amd64`
-- `rpmrepo-update-darwin-arm64`
 
 ## Quick Start
 
