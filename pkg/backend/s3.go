@@ -11,12 +11,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type S3Backend struct {
 	client      *s3.Client
+	uploader    *manager.Uploader
 	bucket      string
 	prefix      string
 	repomdETag  string
@@ -49,8 +51,10 @@ func NewS3Backend(ctx context.Context, root, endpoint string) (*S3Backend, error
 	}
 
 	client := s3.NewFromConfig(cfg, clientOpts...)
+	uploader := manager.NewUploader(client)
 	return &S3Backend{
 		client:     client,
+		uploader:   uploader,
 		bucket:     bucket,
 		prefix:     prefix,
 		repomdKey:  keyJoin(prefix, "repodata/repomd.xml"),
@@ -153,7 +157,15 @@ func (b *S3Backend) WriteFile(ctx context.Context, path string, data []byte) err
 		if err := b.putObject(ctx, tmpKey, data); err != nil {
 			return err
 		}
-		return b.copyObject(ctx, tmpKey, key)
+		if err := b.copyObject(ctx, tmpKey, key); err != nil {
+			return err
+		}
+		// Clean up temp file after successful copy
+		_, _ = b.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(b.bucket),
+			Key:    aws.String(tmpKey),
+		})
+		return nil
 	}
 	// For repomd.xml apply conditional put if we have an ETag from read.
 	if strings.HasSuffix(path, "repomd.xml") && b.ifMatchETag != "" {
@@ -242,7 +254,7 @@ func (b *S3Backend) CheckRepomdUnchanged(ctx context.Context) error {
 }
 
 func (b *S3Backend) putObject(ctx context.Context, key string, data []byte) error {
-	_, err := b.client.PutObject(ctx, &s3.PutObjectInput{
+	_, err := b.uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(data),
