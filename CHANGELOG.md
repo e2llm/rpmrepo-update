@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0
+
+- Build: Add Windows binary (amd64)
+- S3: Add `--s3-region` flag to override AWS region
+- S3: Add `--s3-disable-etag` flag for R2 and other S3-compatible storage without full ETag support
+
+Note: On Windows, `--sign-rpms` is not available (requires rpmsign). `--sign-repodata` requires GPG4Win.
+
 ## v1.1.0
 
 - S3: Use Upload Manager for multipart upload support (fixes large RPM uploads to MinIO)

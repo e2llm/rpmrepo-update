@@ -31,12 +31,18 @@ type S3Backend struct {
 // NewS3Backend creates an S3 backend for the provided s3://bucket/prefix root.
 // If endpoint is non-empty, it configures the client for S3-compatible storage
 // (e.g., MinIO) with path-style addressing.
-func NewS3Backend(ctx context.Context, root, endpoint string) (*S3Backend, error) {
+// If region is non-empty, it overrides the default AWS region.
+// If disableETag is true, ETag-based conflict detection is disabled (for R2, etc.).
+func NewS3Backend(ctx context.Context, root, endpoint, region string, disableETag bool) (*S3Backend, error) {
 	bucket, prefix, err := parseS3URI(root)
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := config.LoadDefaultConfig(ctx)
+	var cfgOpts []func(*config.LoadOptions) error
+	if region != "" {
+		cfgOpts = append(cfgOpts, config.WithRegion(region))
+	}
+	cfg, err := config.LoadDefaultConfig(ctx, cfgOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("load AWS config: %w", err)
 	}
@@ -53,12 +59,13 @@ func NewS3Backend(ctx context.Context, root, endpoint string) (*S3Backend, error
 	client := s3.NewFromConfig(cfg, clientOpts...)
 	uploader := manager.NewUploader(client)
 	return &S3Backend{
-		client:     client,
-		uploader:   uploader,
-		bucket:     bucket,
-		prefix:     prefix,
-		repomdKey:  keyJoin(prefix, "repodata/repomd.xml"),
-		tempPrefix: keyJoin(prefix, "repodata/.tmp"),
+		client:      client,
+		uploader:    uploader,
+		bucket:      bucket,
+		prefix:      prefix,
+		repomdKey:   keyJoin(prefix, "repodata/repomd.xml"),
+		tempPrefix:  keyJoin(prefix, "repodata/.tmp"),
+		disableETag: disableETag,
 	}, nil
 }
 
@@ -142,7 +149,7 @@ func (b *S3Backend) ReadFile(ctx context.Context, path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if key == b.repomdKey && obj.ETag != nil {
+	if !b.disableETag && key == b.repomdKey && obj.ETag != nil {
 		b.repomdETag = strings.Trim(*obj.ETag, "\"")
 		b.ifMatchETag = b.repomdETag
 	}
@@ -168,7 +175,7 @@ func (b *S3Backend) WriteFile(ctx context.Context, path string, data []byte) err
 		return nil
 	}
 	// For repomd.xml apply conditional put if we have an ETag from read.
-	if strings.HasSuffix(path, "repomd.xml") && b.ifMatchETag != "" {
+	if !b.disableETag && strings.HasSuffix(path, "repomd.xml") && b.ifMatchETag != "" {
 		_, err := b.client.PutObject(ctx, &s3.PutObjectInput{
 			Bucket:  aws.String(b.bucket),
 			Key:     aws.String(key),

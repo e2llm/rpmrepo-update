@@ -36,6 +36,8 @@ func run(ctx context.Context, args []string) error {
 	var gpgKey string
 	var signRPMs bool
 	var s3Endpoint string
+	var s3Region string
+	var s3DisableETag bool
 	root.StringVar(&backendType, "backend", "fs", "backend to use (fs, s3)")
 	root.StringVar(&repoRoot, "repo-root", "", "repository root path or URI")
 	root.StringVar(&logLevel, "log-level", "info", "log level (info, debug)")
@@ -45,6 +47,8 @@ func run(ctx context.Context, args []string) error {
 	root.StringVar(&gpgKey, "gpg-key", "", "GPG key ID to use when signing (default: gpg defaults)")
 	root.BoolVar(&signRPMs, "sign-rpms", false, "re-sign RPMs before adding (GPG)")
 	root.StringVar(&s3Endpoint, "s3-endpoint", "", "S3 endpoint URL for S3-compatible storage (e.g., MinIO)")
+	root.StringVar(&s3Region, "s3-region", "", "S3 region (default: AWS_REGION env or us-east-1)")
+	root.BoolVar(&s3DisableETag, "s3-disable-etag", false, "disable ETag-based conflict detection (for R2, etc.)")
 	root.Usage = func() {
 		fmt.Fprintf(root.Output(), "Usage: rpmrepo-update [global flags] <command> [args]\n")
 		fmt.Fprintf(root.Output(), "Commands: init, add, remove, check\n\n")
@@ -68,21 +72,28 @@ func run(ctx context.Context, args []string) error {
 		return fmt.Errorf("missing command")
 	}
 
+	s3Opts := s3Options{endpoint: s3Endpoint, region: s3Region, disableETag: s3DisableETag}
 	switch remaining[0] {
 	case "init":
-		return runInit(ctx, backendType, repoRoot, s3Endpoint, logLevel, signRepodata, gpgKey, remaining[1:])
+		return runInit(ctx, backendType, repoRoot, s3Opts, logLevel, signRepodata, gpgKey, remaining[1:])
 	case "add":
-		return runAdd(ctx, backendType, repoRoot, s3Endpoint, logLevel, signRPMs, gpgKey, remaining[1:])
+		return runAdd(ctx, backendType, repoRoot, s3Opts, logLevel, signRPMs, gpgKey, remaining[1:])
 	case "remove":
-		return runRemove(ctx, backendType, repoRoot, s3Endpoint, logLevel, remaining[1:])
+		return runRemove(ctx, backendType, repoRoot, s3Opts, logLevel, remaining[1:])
 	case "check":
-		return runCheck(ctx, backendType, repoRoot, s3Endpoint, logLevel, outputFormat, remaining[1:])
+		return runCheck(ctx, backendType, repoRoot, s3Opts, logLevel, outputFormat, remaining[1:])
 	default:
 		return fmt.Errorf("unknown command %q", remaining[0])
 	}
 }
 
-func runInit(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel string, signRepodata bool, gpgKey string, args []string) error {
+type s3Options struct {
+	endpoint    string
+	region      string
+	disableETag bool
+}
+
+func runInit(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, signRepodata bool, gpgKey string, args []string) error {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
@@ -99,7 +110,7 @@ func runInit(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel st
 	if repoRoot == "" {
 		return fmt.Errorf("--repo-root is required")
 	}
-	b, err := buildBackend(ctx, backendType, repoRoot, s3Endpoint)
+	b, err := buildBackend(ctx, backendType, repoRoot, s3Opts)
 	if err != nil {
 		return err
 	}
@@ -114,7 +125,7 @@ func runInit(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel st
 	return nil
 }
 
-func runAdd(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel string, signRPMs bool, gpgKey string, args []string) error {
+func runAdd(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, signRPMs bool, gpgKey string, args []string) error {
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	var replaceExisting bool
@@ -140,7 +151,7 @@ func runAdd(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel str
 	if len(rpmPaths) == 0 {
 		return fmt.Errorf("add requires at least one RPM path")
 	}
-	b, err := buildBackend(ctx, backendType, repoRoot, s3Endpoint)
+	b, err := buildBackend(ctx, backendType, repoRoot, s3Opts)
 	if err != nil {
 		return err
 	}
@@ -170,7 +181,7 @@ func runAdd(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel str
 	return nil
 }
 
-func runRemove(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel string, args []string) error {
+func runRemove(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, args []string) error {
 	fs := flag.NewFlagSet("remove", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	var deleteFiles bool
@@ -194,7 +205,7 @@ func runRemove(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel 
 	if len(ids) == 0 {
 		return fmt.Errorf("remove requires at least one identifier")
 	}
-	b, err := buildBackend(ctx, backendType, repoRoot, s3Endpoint)
+	b, err := buildBackend(ctx, backendType, repoRoot, s3Opts)
 	if err != nil {
 		return err
 	}
@@ -218,7 +229,7 @@ func runRemove(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel 
 	return nil
 }
 
-func runCheck(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel, outputFormat string, args []string) error {
+func runCheck(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel, outputFormat string, args []string) error {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	if err := fs.Parse(args); err != nil {
@@ -230,7 +241,7 @@ func runCheck(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel, 
 	if repoRoot == "" {
 		return fmt.Errorf("--repo-root is required")
 	}
-	b, err := buildBackend(ctx, backendType, repoRoot, s3Endpoint)
+	b, err := buildBackend(ctx, backendType, repoRoot, s3Opts)
 	if err != nil {
 		return err
 	}
@@ -258,12 +269,12 @@ func runCheck(ctx context.Context, backendType, repoRoot, s3Endpoint, logLevel, 
 	return nil
 }
 
-func buildBackend(ctx context.Context, backendType, repoRoot, s3Endpoint string) (backend.Backend, error) {
+func buildBackend(ctx context.Context, backendType, repoRoot string, s3Opts s3Options) (backend.Backend, error) {
 	switch backendType {
 	case "fs":
 		return backend.NewFSBackend(repoRoot), nil
 	case "s3":
-		return backend.NewS3Backend(ctx, repoRoot, s3Endpoint)
+		return backend.NewS3Backend(ctx, repoRoot, s3Opts.endpoint, s3Opts.region, s3Opts.disableETag)
 	default:
 		return nil, fmt.Errorf("backend %q not implemented", backendType)
 	}

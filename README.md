@@ -62,7 +62,12 @@ sudo mv rpmrepo-update /usr/local/bin/
 curl -L https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-darwin-arm64 -o rpmrepo-update
 chmod +x rpmrepo-update
 sudo mv rpmrepo-update /usr/local/bin/
+
+# Windows (amd64) - PowerShell
+Invoke-WebRequest -Uri https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-windows-amd64.exe -OutFile rpmrepo-update.exe
 ```
+
+> **Note**: On Windows, `--sign-rpms` is not available (requires `rpmsign`). `--sign-repodata` requires GPG4Win.
 
 Or download a specific version from [Releases](https://github.com/e2llm/rpmrepo-update/releases).
 
@@ -153,16 +158,19 @@ build-rpm:
 
 publish-yum:
   stage: publish
-  image: golang:1.23-alpine
+  image: alpine:latest
   needs:
     - build-rpm
   variables:
     REPO_ROOT: "s3://packages/myapp/el9/x86_64"
+  before_script:
+    - apk add --no-cache curl
+    - curl -L https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-linux-amd64 -o /usr/local/bin/rpmrepo-update
+    - chmod +x /usr/local/bin/rpmrepo-update
   script:
-    - go install github.com/e2llm/rpmrepo-update/cmd/rpmrepo-update@latest
     - |
       for rpm in ~/rpmbuild/RPMS/**/*.rpm; do
-        rpmrepo-update --backend s3 \
+        /usr/local/bin/rpmrepo-update --backend s3 \
           --repo-root "$REPO_ROOT" \
           add "$rpm" --replace-existing
       done
@@ -183,18 +191,17 @@ publish-rpm:
       with:
         name: rpm-package
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
+    - name: Install rpmrepo-update
+      run: |
+        curl -L https://github.com/e2llm/rpmrepo-update/releases/latest/download/rpmrepo-update-linux-amd64 -o /usr/local/bin/rpmrepo-update
+        chmod +x /usr/local/bin/rpmrepo-update
 
     - name: Publish to YUM repo
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
       run: |
-        go install github.com/e2llm/rpmrepo-update/cmd/rpmrepo-update@latest
-        rpmrepo-update --backend s3 \
+        /usr/local/bin/rpmrepo-update --backend s3 \
           --s3-endpoint https://s3.example.com \
           --repo-root s3://packages/myapp/el9/x86_64 \
           add ./*.rpm --replace-existing
@@ -284,10 +291,12 @@ rpmrepo-update \
 | `--backend` | Backend type: `fs` (filesystem) or `s3` |
 | `--repo-root` | Repository root path or S3 URI |
 | `--s3-endpoint` | Custom S3 endpoint URL (for MinIO, etc.) |
+| `--s3-region` | S3 region (default: `AWS_REGION` env or `us-east-1`) |
+| `--s3-disable-etag` | Disable ETag-based conflict detection (for R2, etc.) |
 | `--log-level` | Log level: `error`, `info`, `debug` |
 | `--output` | Output format: `text`, `json` |
 | `--sign-repodata` | Sign repomd.xml with GPG |
-| `--sign-rpms` | Re-sign RPMs before adding |
+| `--sign-rpms` | Re-sign RPMs before adding (Linux only) |
 | `--gpg-key` | GPG key ID for signing |
 
 ### Commands
