@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.1
+
+- FS backend: Create files with 0644 permissions instead of 0600 (#2)
+
 ## v1.2.0
 
 - Build: Add Windows binary (amd64)
