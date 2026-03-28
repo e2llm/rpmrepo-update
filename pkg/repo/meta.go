@@ -49,7 +49,7 @@ func (r *Repo) loadPackages(ctx context.Context) (metadata.RepoMD, []metadata.Pa
 }
 
 // writeMetadata regenerates core metadata and repomd.xml, writing via backend.
-func (r *Repo) writeMetadata(ctx context.Context, md metadata.RepoMD, pkgs []metadata.Package, checksumAlg string, now time.Time) error {
+func (r *Repo) writeMetadata(ctx context.Context, md metadata.RepoMD, pkgs []metadata.Package, checksumAlg string, now time.Time, signRepodata bool, gpgKey string) error {
 	if validator, ok := r.backend.(RepomdValidator); ok {
 		if err := validator.CheckRepomdUnchanged(ctx); err != nil {
 			return err
@@ -77,6 +77,12 @@ func (r *Repo) writeMetadata(ctx context.Context, md metadata.RepoMD, pkgs []met
 	}
 	if err := r.backend.WriteFile(ctx, "repodata/repomd.xml", repomdBytes); err != nil {
 		return fmt.Errorf("write repodata/repomd.xml: %w", err)
+	}
+
+	if signRepodata {
+		if err := r.signRepomd(ctx, repomdBytes, gpgKey); err != nil {
+			return fmt.Errorf("sign repomd.xml: %w", err)
+		}
 	}
 
 	// Clean up old metadata files no longer referenced

@@ -11,7 +11,7 @@ import (
 )
 
 // AddRPMs adds RPMs to the repository, updating core metadata. Only filesystem/S3 backends are supported in v1.
-func (r *Repo) AddRPMs(ctx context.Context, rpmPaths []string, replaceExisting bool, dryRun bool, signRPMs bool, gpgKey string) error {
+func (r *Repo) AddRPMs(ctx context.Context, rpmPaths []string, replaceExisting bool, dryRun bool, signRPMs bool, signRepodata bool, gpgKey string) error {
 	if r.backend == nil {
 		return fmt.Errorf("backend is required")
 	}
@@ -82,5 +82,5 @@ func (r *Repo) AddRPMs(ctx context.Context, rpmPaths []string, replaceExisting b
 	if dryRun {
 		return nil
 	}
-	return r.writeMetadata(ctx, md, pkgs, checksumAlg, now)
+	return r.writeMetadata(ctx, md, pkgs, checksumAlg, now, signRepodata, gpgKey)
 }

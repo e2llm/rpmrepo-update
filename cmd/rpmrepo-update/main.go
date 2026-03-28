@@ -77,9 +77,9 @@ func run(ctx context.Context, args []string) error {
 	case "init":
 		return runInit(ctx, backendType, repoRoot, s3Opts, logLevel, signRepodata, gpgKey, remaining[1:])
 	case "add":
-		return runAdd(ctx, backendType, repoRoot, s3Opts, logLevel, signRPMs, gpgKey, remaining[1:])
+		return runAdd(ctx, backendType, repoRoot, s3Opts, logLevel, signRPMs, signRepodata, gpgKey, remaining[1:])
 	case "remove":
-		return runRemove(ctx, backendType, repoRoot, s3Opts, logLevel, remaining[1:])
+		return runRemove(ctx, backendType, repoRoot, s3Opts, logLevel, signRepodata, gpgKey, remaining[1:])
 	case "check":
 		return runCheck(ctx, backendType, repoRoot, s3Opts, logLevel, outputFormat, remaining[1:])
 	default:
@@ -125,7 +125,7 @@ func runInit(ctx context.Context, backendType, repoRoot string, s3Opts s3Options
 	return nil
 }
 
-func runAdd(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, signRPMs bool, gpgKey string, args []string) error {
+func runAdd(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, signRPMs bool, signRepodata bool, gpgKey string, args []string) error {
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	var replaceExisting bool
@@ -166,7 +166,7 @@ func runAdd(ctx context.Context, backendType, repoRoot string, s3Opts s3Options,
 	}
 	r.AllowUnknown = allowUnknown
 	r.DestPrefix = destPrefix
-	if err := r.AddRPMs(ctx, rpmPaths, replaceExisting, dryRun, signRPMs, gpgKey); err != nil {
+	if err := r.AddRPMs(ctx, rpmPaths, replaceExisting, dryRun, signRPMs, signRepodata, gpgKey); err != nil {
 		return err
 	}
 	if dryRun {
@@ -181,7 +181,7 @@ func runAdd(ctx context.Context, backendType, repoRoot string, s3Opts s3Options,
 	return nil
 }
 
-func runRemove(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, args []string) error {
+func runRemove(ctx context.Context, backendType, repoRoot string, s3Opts s3Options, logLevel string, signRepodata bool, gpgKey string, args []string) error {
 	fs := flag.NewFlagSet("remove", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	var deleteFiles bool
@@ -214,7 +214,7 @@ func runRemove(ctx context.Context, backendType, repoRoot string, s3Opts s3Optio
 		return err
 	}
 	r.AllowUnknown = allowUnknown
-	if err := r.RemoveRPMs(ctx, ids, byNEVRA, deleteFiles, dryRun); err != nil {
+	if err := r.RemoveRPMs(ctx, ids, byNEVRA, deleteFiles, dryRun, signRepodata, gpgKey); err != nil {
 		return err
 	}
 	if dryRun {
