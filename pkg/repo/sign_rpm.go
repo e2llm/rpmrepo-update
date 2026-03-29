@@ -15,7 +15,7 @@ func (r *Repo) signRPM(ctx context.Context, rpmData []byte, gpgKey string) ([]by
 		return nil, fmt.Errorf("mktemp failed: %w", err)
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 	if _, err := tmp.Write(rpmData); err != nil {
 		return nil, fmt.Errorf("write temp rpm: %w", err)
 	}

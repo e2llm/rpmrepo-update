@@ -1,8 +1,15 @@
 # Changelog
 
+## v1.3.0
+
+- Sign repomd.xml on `add` and `remove` when `--sign-repodata` is set (contribution by Jared Hamlin, #4)
+- Fix CVE-2025-22869: bump golang.org/x/crypto to v0.49.0
+- S3: migrate from deprecated `feature/s3/manager` to `feature/s3/transfermanager`
+- Build: Go 1.25
+
 ## v1.2.1
 
-- FS backend: Create files with 0644 permissions instead of 0600 (#2)
+- FS backend: Create files with 0644 permissions instead of 0600 (fixes #2)
 
 ## v1.2.0
 

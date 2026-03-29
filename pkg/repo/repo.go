@@ -19,6 +19,10 @@ type Repo struct {
 	AllowUnknown bool
 	// DestPrefix sets a destination prefix under the repo root for RPM writes.
 	DestPrefix string
+	// SignRepodata enables GPG signing of repomd.xml after metadata writes.
+	SignRepodata bool
+	// GPGKey is the GPG key ID to use for signing (empty = gpg default key).
+	GPGKey string
 }
 
 func New(backend backend.Backend) *Repo {
@@ -34,7 +38,7 @@ func (r *Repo) WithLogger(w io.Writer) {
 }
 
 // InitRepo creates an empty repository layout with core metadata files.
-func (r *Repo) InitRepo(ctx context.Context, checksumAlg string, force bool, signRepodata bool, gpgKey string) error {
+func (r *Repo) InitRepo(ctx context.Context, checksumAlg string, force bool) error {
 	if r.backend == nil {
 		return fmt.Errorf("backend is required")
 	}
@@ -64,8 +68,8 @@ func (r *Repo) InitRepo(ctx context.Context, checksumAlg string, force bool, sig
 	if err := r.backend.WriteFile(ctx, "repodata/repomd.xml", repomdBytes); err != nil {
 		return fmt.Errorf("write repodata/repomd.xml: %w", err)
 	}
-	if signRepodata {
-		if err := r.signRepomd(ctx, repomdBytes, gpgKey); err != nil {
+	if r.SignRepodata {
+		if err := r.signRepomd(ctx, repomdBytes, r.GPGKey); err != nil {
 			return fmt.Errorf("sign repomd.xml: %w", err)
 		}
 	}

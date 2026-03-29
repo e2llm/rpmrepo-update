@@ -10,7 +10,7 @@ import (
 )
 
 // RemoveRPMs removes packages identified by filename (default) or NEVRA. Optionally deletes RPM files.
-func (r *Repo) RemoveRPMs(ctx context.Context, identifiers []string, byNEVRA bool, deleteFiles bool, dryRun bool, signRepodata bool, gpgKey string) error {
+func (r *Repo) RemoveRPMs(ctx context.Context, identifiers []string, byNEVRA bool, deleteFiles bool, dryRun bool) error {
 	if len(identifiers) == 0 {
 		return fmt.Errorf("no identifiers provided")
 	}
@@ -63,5 +63,5 @@ func (r *Repo) RemoveRPMs(ctx context.Context, identifiers []string, byNEVRA boo
 	if dryRun {
 		return nil
 	}
-	return r.writeMetadata(ctx, md, kept, checksumAlg, now, signRepodata, gpgKey)
+	return r.writeMetadata(ctx, md, kept, checksumAlg, now)
 }

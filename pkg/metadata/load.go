@@ -101,7 +101,7 @@ func gunzip(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
 		return nil, err

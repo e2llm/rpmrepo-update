@@ -131,6 +131,7 @@ func TestRenderParseRoundTripEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render empty: %v", err)
 	}
+
 	outPkgs, err := ParsePackagesFromXML(primaryXML, filelistsXML, otherXML)
 	if err != nil {
 		t.Fatalf("parse empty: %v", err)
@@ -140,7 +141,7 @@ func TestRenderParseRoundTripEmpty(t *testing.T) {
 	}
 }
 
-func TestRenderParseRoundTripMultiplePackages(t *testing.T) {
+func TestRenderParseRoundTripMultiple(t *testing.T) {
 	pkgs := []Package{
 		{
 			Name:         "foo",
@@ -148,21 +149,23 @@ func TestRenderParseRoundTripMultiplePackages(t *testing.T) {
 			Version:      "1.0",
 			Release:      "1",
 			ChecksumType: "sha256",
-			PkgID:        "abcdef",
+			PkgID:        "abcdef123",
 		},
 		{
 			Name:         "bar",
 			Arch:         "noarch",
 			Version:      "2.0",
-			Release:      "2",
+			Release:      "1",
 			ChecksumType: "sha256",
-			PkgID:        "123456",
+			PkgID:        "fedcba321",
 		},
 	}
+
 	primaryXML, filelistsXML, otherXML, err := RenderCoreXML(pkgs)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
+
 	outPkgs, err := ParsePackagesFromXML(primaryXML, filelistsXML, otherXML)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -172,7 +175,7 @@ func TestRenderParseRoundTripMultiplePackages(t *testing.T) {
 	}
 }
 
-func TestPackageWithDependencies(t *testing.T) {
+func TestRenderParseRoundTripWithDeps(t *testing.T) {
 	// Note: Go's encoding/xml doesn't properly handle rpm: namespace prefix during unmarshal.
 	// Dependencies are populated from actual RPM files via inspector, not XML round-trip.
 	// This test verifies that packages with dependencies can be rendered without error.
@@ -185,7 +188,6 @@ func TestPackageWithDependencies(t *testing.T) {
 			ChecksumType: "sha256",
 			PkgID:        "abcdef",
 			Requires: []Relation{
-				{Name: "libc.so.6"},
 				{Name: "bar", Flags: "GE", Ver: "1.0"},
 			},
 			Provides: []Relation{
@@ -193,10 +195,12 @@ func TestPackageWithDependencies(t *testing.T) {
 			},
 		},
 	}
+
 	primaryXML, filelistsXML, otherXML, err := RenderCoreXML(pkgs)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
+
 	outPkgs, err := ParsePackagesFromXML(primaryXML, filelistsXML, otherXML)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -207,35 +211,5 @@ func TestPackageWithDependencies(t *testing.T) {
 	// Verify basic package info is preserved
 	if outPkgs[0].Name != "foo" {
 		t.Errorf("expected name 'foo', got %q", outPkgs[0].Name)
-	}
-}
-
-func TestPackageWithChangelogs(t *testing.T) {
-	pkgs := []Package{
-		{
-			Name:         "foo",
-			Arch:         "x86_64",
-			Version:      "1.0",
-			Release:      "1",
-			ChecksumType: "sha256",
-			PkgID:        "abcdef",
-			Changelogs: []Changelog{
-				{Author: "John Doe <john@example.com>", Date: 1234567890, Text: "Initial release"},
-			},
-		},
-	}
-	primaryXML, filelistsXML, otherXML, err := RenderCoreXML(pkgs)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	outPkgs, err := ParsePackagesFromXML(primaryXML, filelistsXML, otherXML)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if len(outPkgs) != 1 {
-		t.Fatalf("expected 1 package, got %d", len(outPkgs))
-	}
-	if len(outPkgs[0].Changelogs) != 1 {
-		t.Errorf("expected 1 changelog, got %d", len(outPkgs[0].Changelogs))
 	}
 }

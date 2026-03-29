@@ -18,7 +18,7 @@ var version = "dev"
 
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -50,8 +50,8 @@ func run(ctx context.Context, args []string) error {
 	root.StringVar(&s3Region, "s3-region", "", "S3 region (default: AWS_REGION env or us-east-1)")
 	root.BoolVar(&s3DisableETag, "s3-disable-etag", false, "disable ETag-based conflict detection (for R2, etc.)")
 	root.Usage = func() {
-		fmt.Fprintf(root.Output(), "Usage: rpmrepo-update [global flags] <command> [args]\n")
-		fmt.Fprintf(root.Output(), "Commands: init, add, remove, check\n\n")
+		_, _ = fmt.Fprintf(root.Output(), "Usage: rpmrepo-update [global flags] <command> [args]\n")
+		_, _ = fmt.Fprintf(root.Output(), "Commands: init, add, remove, check\n\n")
 		root.PrintDefaults()
 	}
 
@@ -62,7 +62,7 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	if showVersion {
-		fmt.Fprintf(os.Stdout, "%s\n", version)
+		_, _ = fmt.Fprintf(os.Stdout, "%s\n", version)
 		return nil
 	}
 
@@ -80,6 +80,7 @@ func run(ctx context.Context, args []string) error {
 		return runAdd(ctx, backendType, repoRoot, s3Opts, logLevel, signRPMs, signRepodata, gpgKey, remaining[1:])
 	case "remove":
 		return runRemove(ctx, backendType, repoRoot, s3Opts, logLevel, signRepodata, gpgKey, remaining[1:])
+
 	case "check":
 		return runCheck(ctx, backendType, repoRoot, s3Opts, logLevel, outputFormat, remaining[1:])
 	default:
@@ -118,10 +119,12 @@ func runInit(ctx context.Context, backendType, repoRoot string, s3Opts s3Options
 	if err != nil {
 		return err
 	}
-	if err := r.InitRepo(ctx, checksum, force, signRepodata, gpgKey); err != nil {
+	r.SignRepodata = signRepodata
+	r.GPGKey = gpgKey
+	if err := r.InitRepo(ctx, checksum, force); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "initialized repo at %s (checksum: %s)\n", repoRoot, checksum)
+	_, _ = fmt.Fprintf(os.Stdout, "initialized repo at %s (checksum: %s)\n", repoRoot, checksum)
 	return nil
 }
 
@@ -166,16 +169,18 @@ func runAdd(ctx context.Context, backendType, repoRoot string, s3Opts s3Options,
 	}
 	r.AllowUnknown = allowUnknown
 	r.DestPrefix = destPrefix
-	if err := r.AddRPMs(ctx, rpmPaths, replaceExisting, dryRun, signRPMs, signRepodata, gpgKey); err != nil {
+	r.SignRepodata = signRepodata
+	r.GPGKey = gpgKey
+	if err := r.AddRPMs(ctx, rpmPaths, replaceExisting, dryRun, signRPMs); err != nil {
 		return err
 	}
 	if dryRun {
 		for _, p := range rpmPaths {
-			fmt.Fprintf(os.Stdout, "would add %s\n", p)
+			_, _ = fmt.Fprintf(os.Stdout, "would add %s\n", p)
 		}
 	} else {
 		for _, p := range rpmPaths {
-			fmt.Fprintf(os.Stdout, "added %s\n", p)
+			_, _ = fmt.Fprintf(os.Stdout, "added %s\n", p)
 		}
 	}
 	return nil
@@ -214,16 +219,18 @@ func runRemove(ctx context.Context, backendType, repoRoot string, s3Opts s3Optio
 		return err
 	}
 	r.AllowUnknown = allowUnknown
-	if err := r.RemoveRPMs(ctx, ids, byNEVRA, deleteFiles, dryRun, signRepodata, gpgKey); err != nil {
+	r.SignRepodata = signRepodata
+	r.GPGKey = gpgKey
+	if err := r.RemoveRPMs(ctx, ids, byNEVRA, deleteFiles, dryRun); err != nil {
 		return err
 	}
 	if dryRun {
 		for _, id := range ids {
-			fmt.Fprintf(os.Stdout, "would remove %s\n", id)
+			_, _ = fmt.Fprintf(os.Stdout, "would remove %s\n", id)
 		}
 	} else {
 		for _, id := range ids {
-			fmt.Fprintf(os.Stdout, "removed %s\n", id)
+			_, _ = fmt.Fprintf(os.Stdout, "removed %s\n", id)
 		}
 	}
 	return nil
@@ -256,9 +263,9 @@ func runCheck(ctx context.Context, backendType, repoRoot string, s3Opts s3Option
 	switch outputFormat {
 	case "text":
 		for _, w := range result.Warnings {
-			fmt.Fprintf(os.Stdout, "warn: %s\n", w)
+			_, _ = fmt.Fprintf(os.Stdout, "warn: %s\n", w)
 		}
-		fmt.Fprintf(os.Stdout, "repo ok at %s\n", repoRoot)
+		_, _ = fmt.Fprintf(os.Stdout, "repo ok at %s\n", repoRoot)
 	case "json":
 		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 			return fmt.Errorf("encode json: %w", err)

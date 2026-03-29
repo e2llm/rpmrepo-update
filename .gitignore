@@ -1,4 +1,4 @@
-# Binary (at root level only)
+# Binary
 /rpmrepo-update
 
 # Go build cache

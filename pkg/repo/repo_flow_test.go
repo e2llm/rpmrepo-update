@@ -43,7 +43,7 @@ func TestRemoveRPMsMetadataOnly(t *testing.T) {
 	mb.files["foo-1.0-1.x86_64.rpm"] = []byte("rpmdata")
 
 	r := New(mb)
-	if err := r.RemoveRPMs(ctx, []string{"foo-1.0-1.x86_64.rpm"}, false, true, false, false, ""); err != nil {
+	if err := r.RemoveRPMs(ctx, []string{"foo-1.0-1.x86_64.rpm"}, false, true, false); err != nil {
 		t.Fatalf("RemoveRPMs: %v", err)
 	}
 	_, pkgsOut, _, err := r.loadPackages(ctx)
@@ -72,7 +72,7 @@ func TestWriteMetadataConflict(t *testing.T) {
 	pkgs := []metadata.Package{}
 	now := time.Unix(0, 0)
 	md := metadata.RepoMD{}
-	err := (&Repo{backend: cb, logger: newTestLogger(t)}).writeMetadata(ctx, md, pkgs, "sha256", now, false, "")
+	err := (&Repo{backend: cb, logger: newTestLogger(t)}).writeMetadata(ctx, md, pkgs, "sha256", now)
 	if err == nil {
 		t.Fatalf("expected conflict error")
 	}

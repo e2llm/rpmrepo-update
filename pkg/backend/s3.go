@@ -11,15 +11,15 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type S3Backend struct {
-	client      *s3.Client
-	uploader    *manager.Uploader
-	bucket      string
+	client   *s3.Client
+	transfer *transfermanager.Client
+	bucket   string
 	prefix      string
 	repomdETag  string
 	repomdKey   string
@@ -57,11 +57,11 @@ func NewS3Backend(ctx context.Context, root, endpoint, region string, disableETa
 	}
 
 	client := s3.NewFromConfig(cfg, clientOpts...)
-	uploader := manager.NewUploader(client)
+	transfer := transfermanager.New(client)
 	return &S3Backend{
-		client:      client,
-		uploader:    uploader,
-		bucket:      bucket,
+		client:   client,
+		transfer: transfer,
+		bucket:   bucket,
 		prefix:      prefix,
 		repomdKey:   keyJoin(prefix, "repodata/repomd.xml"),
 		tempPrefix:  keyJoin(prefix, "repodata/.tmp"),
@@ -144,7 +144,7 @@ func (b *S3Backend) ReadFile(ctx context.Context, path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer obj.Body.Close()
+	defer func() { _ = obj.Body.Close() }()
 	data, err := io.ReadAll(obj.Body)
 	if err != nil {
 		return nil, err
@@ -261,7 +261,7 @@ func (b *S3Backend) CheckRepomdUnchanged(ctx context.Context) error {
 }
 
 func (b *S3Backend) putObject(ctx context.Context, key string, data []byte) error {
-	_, err := b.uploader.Upload(ctx, &s3.PutObjectInput{
+	_, err := b.transfer.UploadObject(ctx, &transfermanager.UploadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(data),
