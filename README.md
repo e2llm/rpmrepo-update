@@ -1,6 +1,6 @@
 # rpmrepo-update
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A fast, incremental RPM repository metadata updater written in Go. Add or remove packages from YUM/DNF repositories without downloading the entire repo.
@@ -73,7 +73,7 @@ Or download a specific version from [Releases](https://github.com/e2llm/rpmrepo-
 
 ### From Source
 
-Requires Go 1.21+:
+Requires Go 1.25+:
 
 ```bash
 go install github.com/e2llm/rpmrepo-update/cmd/rpmrepo-update@latest
@@ -327,7 +327,7 @@ rpmrepo-update check [--output json]
 
 ## Requirements
 
-- Go 1.21 or later
+- Go 1.25 or later
 - For GPG signing: `gpg` command available in PATH
 - For RPM re-signing: `rpmsign` command available in PATH
 
