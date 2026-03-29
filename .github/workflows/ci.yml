@@ -9,20 +9,13 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: ['1.21', '1.22', '1.23']
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
-
-      - name: Tidy modules
-        run: go mod tidy
+          go-version: '1.25'
 
       - name: Build
         run: go build -v ./...
@@ -33,9 +26,6 @@ jobs:
       - name: Coverage
         run: go tool cover -func=coverage.out
 
-      - name: Vet
-        run: go vet ./...
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -44,17 +34,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-
-      - name: Tidy modules
-        run: go mod tidy
+          go-version: '1.25'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
+          version: v2.11.4
 
-  vuln:
+  govulncheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,14 +49,22 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-
-      - name: Tidy modules
-        run: go mod tidy
+          go-version: '1.25'
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run govulncheck
         run: govulncheck ./...
-        continue-on-error: true  # stdlib vulns in AWS SDK - track but don't block
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
