@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.1
+
+- Security (Go stdlib): rebuilt on Go 1.25.11 — fixes `crypto/x509` quadratic hostname verification (CVE-2026-27145) and `net/textproto` error injection (CVE-2026-42507)
+- Security (deps): bump `golang.org/x/crypto` v0.49.0 -> v0.52.0
+- No functional changes
+
 ## v1.3.0
 
 - Sign repomd.xml on `add` and `remove` when `--sign-repodata` is set (contribution by Jared Hamlin, #4)
